@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  AGENT
+  ADMIN
+}
+
+enum Status {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketAction {
+  CREATED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  ASSIGNED
+  RESOLVED
+  CLOSED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ticketsCreated  Ticket[]         @relation("TicketCustomer")
+  assignedTickets Ticket[]         @relation("TicketAssignee")
+  messages        TicketMessage[]
+  activities      TicketActivity[]
+}
+
+model Ticket {
+  id           Int            @id @default(autoincrement())
+  subject      String
+  description  String
+  status       Status         @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  customerId   Int
+  assignedToId Int?
+  categoryId   Int
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  customer User @relation("TicketCustomer", fields: [customerId], references: [id])
+
+  assignedTo User? @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  category   Category         @relation(fields: [categoryId], references: [id])
+  messages   TicketMessage[]
+  activities TicketActivity[]
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  tickets     Ticket[]
+}
+
+model TicketMessage {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  senderId  Int
+  message   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  sender User   @relation(fields: [senderId], references: [id])
+}
+
+model TicketActivity {
+  id        Int          @id @default(autoincrement())
+  ticketId  Int
+  userId    Int
+  action    TicketAction
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime     @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
